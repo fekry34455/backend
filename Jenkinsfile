@@ -28,7 +28,7 @@ pipeline {
         // ============================
         // Create .env File
         // ============================
-      stage('Create Env File') {
+stage('Create Env File') {
     steps {
         withCredentials([
             string(credentialsId: 'DJANGO_SECRET_KEY', variable: 'DJANGO_SECRET_KEY')
@@ -44,9 +44,10 @@ DATABASE_URL=sqlite:///db.sqlite3
 
 DJANGO_EMAIL_BACKEND=django.core.mail.backends.console.EmailBackend
 
+DJANGO_SECURE=False
+
 USE_S3=False
 AWS_REGION=us-east-1
-
 EOF
 '''
         }
