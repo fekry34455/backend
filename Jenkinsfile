@@ -8,18 +8,12 @@ pipeline {
 
     stages {
 
-        // ============================
-        // Checkout Source Code
-        // ============================
         stage('Checkout') {
             steps {
                 checkout scm
             }
         }
 
-        // ============================
-        // Setup Python & Install Deps
-        // ============================
         stage('Install Dependencies') {
             steps {
                 sh '''
@@ -32,8 +26,24 @@ pipeline {
         }
 
         // ============================
-        // Run Django Migrations
+        // Create .env File
         // ============================
+        stage('Create Env File') {
+            steps {
+                withCredentials([
+                    string(credentialsId: 'DJANGO_SECRET_KEY', variable: 'DJANGO_SECRET_KEY')
+                ]) {
+                    sh '''
+                      cat > .env <<EOF
+DJANGO_SECRET_KEY=$DJANGO_SECRET_KEY
+DJANGO_DEBUG=True
+ALLOWED_HOSTS=*
+EOF
+                    '''
+                }
+            }
+        }
+
         stage('Migrate Database') {
             steps {
                 sh '''
@@ -43,9 +53,6 @@ pipeline {
             }
         }
 
-        // ============================
-        // Run Tests (Optional)
-        // ============================
         stage('Run Tests') {
             steps {
                 sh '''
@@ -55,9 +62,6 @@ pipeline {
             }
         }
 
-        // ============================
-        // Build Docker Image
-        // ============================
         stage('Docker Build') {
             steps {
                 sh '''
@@ -67,9 +71,6 @@ pipeline {
             }
         }
 
-        // ============================
-        // Trivy Scan
-        // ============================
         stage('Trivy Scan') {
             steps {
                 sh '''
@@ -78,16 +79,15 @@ pipeline {
             }
         }
 
-        // ============================
-        // Push To DockerHub
-        // ============================
         stage('Push Image') {
             steps {
-                withCredentials([usernamePassword(
-                    credentialsId: 'docker-hub-credentials',
-                    usernameVariable: 'DOCKER_USER',
-                    passwordVariable: 'DOCKER_PASS'
-                )]) {
+                withCredentials([
+                    usernamePassword(
+                        credentialsId: 'docker-hub-credentials',
+                        usernameVariable: 'DOCKER_USER',
+                        passwordVariable: 'DOCKER_PASS'
+                    )
+                ]) {
                     sh '''
                       echo "$DOCKER_PASS" | docker login -u "$DOCKER_USER" --password-stdin
                       docker push ${IMAGE_NAME}:${IMAGE_TAG}
