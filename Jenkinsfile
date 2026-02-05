@@ -28,7 +28,7 @@ pipeline {
         // ============================
         // Create .env File
         // ============================
-        stage('Create Env File') {
+      stage('Create Env File') {
     steps {
         withCredentials([
             string(credentialsId: 'DJANGO_SECRET_KEY', variable: 'DJANGO_SECRET_KEY')
@@ -37,13 +37,22 @@ pipeline {
 cat > .env <<EOF
 DJANGO_SECRET_KEY=$DJANGO_SECRET_KEY
 DJANGO_DEBUG=True
+
 DJANGO_ALLOWED_HOSTS=localhost,127.0.0.1,*
+
 DATABASE_URL=sqlite:///db.sqlite3
+
+DJANGO_EMAIL_BACKEND=django.core.mail.backends.console.EmailBackend
+
+USE_S3=False
+AWS_REGION=us-east-1
+
 EOF
 '''
         }
     }
 }
+
 
 
         stage('Migrate Database') {
