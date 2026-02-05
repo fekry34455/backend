@@ -1,90 +1,52 @@
-# Python cache and compiled files
-__pycache__/
-*.py[cod]
-*$py.class
-*.pyc
-*.pyo
-*.pyd
-.Python
+# ================================
+# Stage 1 - Builder
+# ================================
+FROM python:3.12-slim AS builder
 
-# Virtual environments
-venv/
-env/
-ENV/
-.venv/
-virtualenv/
+ENV PYTHONDONTWRITEBYTECODE=1
+ENV PYTHONUNBUFFERED=1
 
-# Django specific
-*.log
-db.sqlite3
-db.sqlite3-journal
-/media/*
-!/media/.gitkeep
-!/media/README.md
-/staticfiles/
-/static/
+RUN apt-get update && apt-get install -y \
+    build-essential \
+    gcc \
+    libpq-dev \
+    && rm -rf /var/lib/apt/lists/*
 
-# Environment files
-.env
-.env.*
-!.env.example
+WORKDIR /app
 
-# Testing
-.pytest_cache/
-.coverage
-.coveragerc
-htmlcov/
-.tox/
-*.cover
-.hypothesis/
+COPY requirements.txt .
 
-# IDE and editors
-.vscode/
-.idea/
-*.swp
-*.swo
-*~
-.project
-.pydevproject
-.settings/
-*.sublime-project
-*.sublime-workspace
+RUN pip install --upgrade pip
+RUN pip install --no-cache-dir -r requirements.txt
 
-# OS files
-.DS_Store
-.DS_Store?
-._*
-.Spotlight-V100
-.Trashes
-ehthumbs.db
-Thumbs.db
+# ================================
+# Stage 2 - Runtime
+# ================================
+FROM python:3.12-slim
 
-# Git
-.git/
-.gitignore
-.gitattributes
+ENV PYTHONDONTWRITEBYTECODE=1
+ENV PYTHONUNBUFFERED=1
 
-# Documentation
-README.md
-docs/
-*.md
+RUN apt-get update && apt-get install -y \
+    libpq-dev curl \
+    && rm -rf /var/lib/apt/lists/*
 
-# CI/CD
-.github/
-.gitlab-ci.yml
-Jenkinsfile
+RUN groupadd -r appgroup && useradd -r -g appgroup -m appuser
 
-# Docker
-Dockerfile
-docker-compose*.yml
-.dockerignore
+WORKDIR /app
 
-# Development tools
-run_tests.sh
-pytest.ini
-conftest.py
+COPY --from=builder /usr/local/lib/python3.12/site-packages /usr/local/lib/python3.12/site-packages
+COPY --from=builder /usr/local/bin /usr/local/bin
 
-# Backup files
-*.bak
-*.tmp
-*.swp
+COPY . .
+
+RUN python manage.py collectstatic --noinput
+
+RUN chown -R appuser:appgroup /app
+USER appuser
+
+EXPOSE 8000
+
+HEALTHCHECK CMD curl --fail http://localhost:8000/health || exit 1
+
+CMD ["gunicorn", "reddit_api.wsgi:application", "--bind", "0.0.0.0:8000", "--timeout", "300", "--workers", "3"]
