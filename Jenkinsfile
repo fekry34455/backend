@@ -65,7 +65,7 @@ pipeline {
 
                 /* Python Environment */
                 sh '''
-                  python3.12 -m venv .venv
+                  python3 -m venv .venv
                   . .venv/bin/activate
                   pip install --upgrade pip
                   pip install -r src/backend/requirements.txt
