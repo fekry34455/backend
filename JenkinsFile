@@ -1,0 +1,124 @@
+pipeline {
+  agent any
+
+  parameters {
+    choice(
+      name: 'BUILD_BACKEND',
+      choices: ['True', 'False'],
+      description: 'Trigger backend build and tests'
+    )
+  }
+
+  environment {
+    USE_S3 = 'False'
+    AWS_REGION = 'us-east-1'
+  }
+
+  stages {
+    stage('Detect Backend Changes') {
+      steps {
+        checkout scm
+        script {
+          def baseRef = env.CHANGE_TARGET ? "origin/${env.CHANGE_TARGET}" : (env.GIT_PREVIOUS_SUCCESSFUL_COMMIT ?: 'HEAD~1')
+          sh "git fetch --no-tags --prune --depth=1 origin +refs/heads/*:refs/remotes/origin/* >/dev/null 2>&1 || true"
+          def changes = sh(
+            script: "git diff --name-only ${baseRef}...HEAD -- 'src/backend/**'",
+            returnStdout: true
+          ).trim()
+          env.BACKEND_CHANGED = changes ? 'true' : 'false'
+          echo "Backend changed: ${env.BACKEND_CHANGED}"
+        }
+      }
+    }
+
+    stage('Build and Test Backend') {
+      when {
+        expression {
+          return env.BACKEND_CHANGED == 'true' || params.BUILD_BACKEND == 'True'
+        }
+      }
+      steps {
+        checkout scm
+        sh '''
+          python3.12 -m venv .venv
+          . .venv/bin/activate
+          python -m pip install --upgrade pip
+          pip install -r ./src/backend/requirements.txt
+        '''
+        sh '''
+          dependency-check.sh \
+            --project "nti-final-project-backend" \
+            --scan "./src/backend/requirements.txt" \
+            --format "HTML" \
+            --enableRetired \
+            --failOnCVSS 7
+        '''
+        withCredentials([
+          string(credentialsId: 'DJANGO_SECRET_KEY', variable: 'DJANGO_SECRET_KEY')
+        ]) {
+          sh '''
+            cd ./src/backend
+            cat > .env << EOF
+            USE_S3=${USE_S3}
+            DJANGO_SECRET_KEY=${DJANGO_SECRET_KEY}
+            DJANGO_DEBUG=True
+            DATABASE_URL=sqlite:///./db.sqlite3
+            DJANGO_ALLOWED_HOSTS=*
+            DJANGO_SECURE=False
+            DJANGO_EMAIL_BACKEND=django.core.mail.backends.console.EmailBackend
+            EOF
+          '''
+        }
+        sh '''
+          cd ./src/backend
+          . ../.venv/bin/activate
+          python manage.py migrate
+        '''
+        sh '''
+          cd ./src/backend
+          . ../.venv/bin/activate
+          pytest --cov --cov-report=term-missing --cov-report=xml:coverage.xml
+        '''
+        withSonarQubeEnv('SonarQube') {
+          sh '''
+            cd src/backend
+            sonar-scanner \
+              -Dsonar.projectKey=nti-final-project-backend \
+              -Dsonar.projectName="NTI Final Project - Backend" \
+              -Dsonar.sources=. \
+              -Dsonar.exclusions=**/migrations/**,**/tests.py,**/test_*.py,**/__pycache__/**,**/htmlcov/**,**/staticfiles/**,**/.pytest_cache/**,**/media/**,**/*.coverage,**/coverage.xml,**/*.sqlite3,**/.env*,**/.gitignore,**/.dockerignore,**/*.pyc,**/*.pyo,**/conftest.py,**/pytest.ini,**/.coveragerc,**/run_tests.sh,**/*.md \
+              -Dsonar.python.coverage.reportPaths=coverage.xml \
+              -Dsonar.python.version=3.12
+          '''
+        }
+        timeout(time: 10, unit: 'MINUTES') {
+          waitForQualityGate abortPipeline: true
+        }
+        sh '''
+          cd ./src/backend
+          . ../.venv/bin/activate
+          python manage.py collectstatic --noinput
+        '''
+        script {
+          env.COMMIT_SHA = sh(script: 'git rev-parse --short HEAD', returnStdout: true).trim()
+        }
+        sh '''
+          cd ./src/backend
+          docker build -t backend-app:${COMMIT_SHA} .
+        '''
+        sh '''
+          trivy image --format table --exit-code 1 --severity CRITICAL,HIGH --ignore-unfixed backend-app:${COMMIT_SHA}
+        '''
+        withCredentials([
+          [$class: 'AmazonWebServicesCredentialsBinding', credentialsId: 'AWS_ECR_CREDS'],
+          string(credentialsId: 'AWS_ECR_ACCOUNT_URL', variable: 'AWS_ECR_ACCOUNT_URL')
+        ]) {
+          sh '''
+            aws ecr get-login-password --region ${AWS_REGION} | docker login --username AWS --password-stdin ${AWS_ECR_ACCOUNT_URL}
+            docker push ${AWS_ECR_ACCOUNT_URL}/backend-app:${COMMIT_SHA}
+          '''
+        }
+      }
+    }
+  }
+}

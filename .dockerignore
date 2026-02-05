@@ -1,0 +1,90 @@
+# Python cache and compiled files
+__pycache__/
+*.py[cod]
+*$py.class
+*.pyc
+*.pyo
+*.pyd
+.Python
+
+# Virtual environments
+venv/
+env/
+ENV/
+.venv/
+virtualenv/
+
+# Django specific
+*.log
+db.sqlite3
+db.sqlite3-journal
+/media/*
+!/media/.gitkeep
+!/media/README.md
+/staticfiles/
+/static/
+
+# Environment files
+.env
+.env.*
+!.env.example
+
+# Testing
+.pytest_cache/
+.coverage
+.coveragerc
+htmlcov/
+.tox/
+*.cover
+.hypothesis/
+
+# IDE and editors
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.project
+.pydevproject
+.settings/
+*.sublime-project
+*.sublime-workspace
+
+# OS files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# Git
+.git/
+.gitignore
+.gitattributes
+
+# Documentation
+README.md
+docs/
+*.md
+
+# CI/CD
+.github/
+.gitlab-ci.yml
+Jenkinsfile
+
+# Docker
+Dockerfile
+docker-compose*.yml
+.dockerignore
+
+# Development tools
+run_tests.sh
+pytest.ini
+conftest.py
+
+# Backup files
+*.bak
+*.tmp
+*.swp

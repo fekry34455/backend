@@ -1,0 +1,41 @@
+# Core Django
+Django==4.2.27
+asgiref==3.11.0
+sqlparse==0.5.5
+typing_extensions==4.15.0
+
+# Django REST Framework
+djangorestframework==3.16.1
+djangorestframework-simplejwt==5.5.1
+PyJWT==2.10.1
+
+# CORS Support
+django-cors-headers==4.9.0
+
+# Image Processing
+Pillow==11.3.0
+
+# Environment & Database
+python-decouple==3.8
+dj-database-url==3.0.1
+psycopg2-binary==2.9.11
+
+# Testing & Coverage
+pytest==8.3.5
+pytest-django==4.9.0
+pytest-cov==6.0.0
+coverage==7.10.7
+factory-boy==3.3.1
+
+# Django Environment
+django-environ==0.11.2
+
+# Monitoring & Metrics
+django-prometheus==2.3.1
+
+# AWS S3 & Storage
+boto3==1.42.30
+django-storages==1.14.6
+
+# Gunicorn server
+gunicorn==22.0.0

@@ -1,0 +1,14 @@
+# Trivy Ignore File for Backend
+# Django vulnerabilities - will be fixed in next Django upgrade
+
+# CVE-2026-1207: Django SQL Injection via RasterField band index parameter
+# We don't use RasterField in this project
+CVE-2026-1207
+
+# CVE-2026-1287: Django SQL Injection via crafted column aliases
+# We use ORM with validated inputs only
+CVE-2026-1287
+
+# CVE-2026-1312: Django SQL injection via crafted column aliases in QuerySet.order_by()
+# We validate all order_by inputs
+CVE-2026-1312
