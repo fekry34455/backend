@@ -34,20 +34,22 @@ pipeline {
         /* ============================
            Detect Backend Changes
         ============================ */
-        stage('Detect Backend Changes') {
-            steps {
-                script {
-                    def baseRef = env.GIT_PREVIOUS_SUCCESSFUL_COMMIT ?: 'HEAD~1'
-                    def changes = sh(
-                        script: "git diff --name-only ${baseRef}...HEAD src/backend",
-                        returnStdout: true
-                    ).trim()
+   stage('Detect Backend Changes') {
+  steps {
+    script {
+      def baseRef = env.GIT_PREVIOUS_SUCCESSFUL_COMMIT ?: 'HEAD~1'
 
-                    env.BACKEND_CHANGED = changes ? "true" : "false"
-                    echo "Backend changed: ${env.BACKEND_CHANGED}"
-                }
-            }
-        }
+      def changes = sh(
+        script: "git diff --name-only ${baseRef}...HEAD -- src/backend/",
+        returnStdout: true
+      ).trim()
+
+      env.BACKEND_CHANGED = changes ? 'true' : 'false'
+      echo "Backend changed: ${env.BACKEND_CHANGED}"
+    }
+  }
+}
+
 
         /* ============================
            Build & Test Backend
