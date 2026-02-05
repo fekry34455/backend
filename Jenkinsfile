@@ -29,20 +29,22 @@ pipeline {
         // Create .env File
         // ============================
         stage('Create Env File') {
-            steps {
-                withCredentials([
-                    string(credentialsId: 'DJANGO_SECRET_KEY', variable: 'DJANGO_SECRET_KEY')
-                ]) {
-                    sh '''
-                      cat > .env <<EOF
+    steps {
+        withCredentials([
+            string(credentialsId: 'DJANGO_SECRET_KEY', variable: 'DJANGO_SECRET_KEY')
+        ]) {
+            sh '''
+cat > .env <<EOF
 DJANGO_SECRET_KEY=$DJANGO_SECRET_KEY
 DJANGO_DEBUG=True
-ALLOWED_HOSTS=*
+DJANGO_ALLOWED_HOSTS=localhost,127.0.0.1,*
+DATABASE_URL=sqlite:///db.sqlite3
 EOF
-                    '''
-                }
-            }
+'''
         }
+    }
+}
+
 
         stage('Migrate Database') {
             steps {
